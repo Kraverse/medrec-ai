@@ -12,7 +12,7 @@ export const demoRecord = {
   allergies: ["No allergy information recorded"],
   observations: ["No vital signs or examination findings recorded"],
   plan: "No treatment plan is provided by this demonstration record.",
-} as const;
+};
 
 export const medrecQueryInput = z.object({
   question: z.string().trim().min(2).max(1200),
@@ -33,9 +33,7 @@ export const medrecQueryInput = z.object({
 });
 
 type GeminiResponse = {
-  candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
-  }>;
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   error?: { message?: string };
 };
 
@@ -56,41 +54,20 @@ export async function answerMedicalQuestion(question: string, record = demoRecor
 
   const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `Synthetic medical record:\n${JSON.stringify(record, null, 2)}\n\nUser question:\n${question}`,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 500,
-      },
+      contents: [{ role: "user", parts: [{ text: `Synthetic medical record:\n${JSON.stringify(record, null, 2)}\n\nUser question:\n${question}` }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
     }),
   });
 
   const data = (await response.json()) as GeminiResponse;
-  if (!response.ok) {
-    throw new Error(data.error?.message || `Gemini request failed with HTTP ${response.status}.`);
-  }
+  if (!response.ok) throw new Error(data.error?.message || `Gemini request failed with HTTP ${response.status}.`);
 
   const text = data.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
-  if (!text) {
-    throw new Error("Gemini returned an empty response.");
-  }
-
+  if (!text) throw new Error("Gemini returned an empty response.");
   return { answer: text, model };
 }
