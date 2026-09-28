@@ -1,33 +1,32 @@
-import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { trpc } from "@/lib/trpc";
+import { AlertCircle, Brain, CheckCircle2, FileText, HeartPulse, Loader2, ShieldCheck, Sparkles, Stethoscope } from "lucide-react";
+import { useState } from "react";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
 export default function Home() {
-  // The useAuth hook provides authentication state.
-  // To implement login/logout, call logout(), or start login from an event
-  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
-  // startLogin() during render (no href={startLogin()}) — it mints a one-time
-  // nonce cookie and must run only at the moment of navigation.
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
-
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+  const demo = trpc.medrec.demo.useQuery();
+  const ask = trpc.medrec.ask.useMutation({ onSuccess: result => { setAnswer(result.answer); setModel(result.model); } });
+  const submit = () => { if (!question.trim() || !demo.data || ask.isPending) return; ask.mutate({ question, record: demo.data }); };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
-    </div>
+    <main className="min-h-screen bg-[#f7f4ed] text-[#173b36]">
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10">
+        <header className="flex items-center justify-between border-b border-[#d9e1da] pb-6">
+          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#174f47] text-white"><HeartPulse size={21} /></div><div><p className="text-lg font-semibold tracking-tight">MedRec-AI</p><p className="text-xs text-[#60746f]">Healthcare AI demonstration</p></div></div>
+          <div className="hidden items-center gap-2 rounded-full border border-[#cfdad3] bg-white/70 px-3 py-1.5 text-xs font-medium text-[#526863] sm:flex"><ShieldCheck size={14} /> Synthetic data only</div>
+        </header>
+        <section className="grid gap-10 py-14 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+          <div><div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#e5eee8] px-3 py-1.5 text-xs font-semibold text-[#245c52]"><Sparkles size={14} /> AI-assisted record review</div><h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">Understand a medical record with a grounded AI assistant.</h1><p className="mt-6 max-w-2xl text-base leading-7 text-[#60746f] sm:text-lg">MedRec-AI demonstrates how an LLM can answer questions from a structured medical record while staying explicit about missing information and clinical limitations.</p><div className="mt-7 flex flex-wrap gap-3 text-sm text-[#526863]"><span className="inline-flex items-center gap-2"><CheckCircle2 size={16} /> Grounded responses</span><span className="inline-flex items-center gap-2"><CheckCircle2 size={16} /> Synthetic demo data</span><span className="inline-flex items-center gap-2"><CheckCircle2 size={16} /> Gemini-powered</span></div></div>
+          <div className="rounded-3xl border border-[#d7e0da] bg-white p-5 shadow-[0_18px_50px_rgba(23,59,54,0.08)] sm:p-7"><div className="mb-5 flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#70837e]">Demo encounter</p><h2 className="mt-1 text-xl font-semibold">Synthetic medical record</h2></div><div className="rounded-xl bg-[#edf4ef] p-2.5 text-[#246357]"><FileText size={20} /></div></div>{demo.isLoading ? <div className="flex items-center gap-2 py-8 text-sm text-[#687a76]"><Loader2 className="animate-spin" size={17} /> Loading demo record...</div> : demo.data ? <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div className="rounded-2xl bg-[#f7f8f5] p-4"><p className="text-xs text-[#788984]">Patient</p><p className="mt-1 font-semibold">{demo.data.patient}</p></div><div className="rounded-2xl bg-[#f7f8f5] p-4"><p className="text-xs text-[#788984]">Age</p><p className="mt-1 font-semibold">{demo.data.age}</p></div></div><div className="rounded-2xl bg-[#f7f8f5] p-4"><p className="text-xs text-[#788984]">Reason for visit</p><p className="mt-1 font-medium">{demo.data.reasonForVisit}</p></div><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-[#e1e7e2] p-4"><p className="text-xs text-[#788984]">Symptoms</p><p className="mt-1 leading-6">{demo.data.symptoms.join(", ")}</p></div><div className="rounded-2xl border border-[#e1e7e2] p-4"><p className="text-xs text-[#788984]">Medications</p><p className="mt-1 leading-6">{demo.data.medications.join(", ")}</p></div></div></div> : <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">Unable to load the demo record.</div>}</div>
+        </section>
+        <section className="grid gap-6 lg:grid-cols-[.8fr_1.2fr]">
+          <div className="rounded-3xl border border-[#d7e0da] bg-[#174f47] p-6 text-white shadow-[0_18px_50px_rgba(23,79,71,0.12)] sm:p-7"><div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10"><Brain size={21} /></div><h2 className="text-xl font-semibold">Ask about the record</h2><p className="mt-2 text-sm leading-6 text-[#d4e3de]">Ask factual questions about the synthetic encounter. The assistant is instructed not to invent missing clinical information.</p><div className="mt-6 space-y-3 text-xs text-[#d4e3de]"><p>Try: “What symptoms are recorded?”</p><p>Try: “Is any medication listed?”</p><p>Try: “What information is missing?”</p></div></div>
+          <div className="rounded-3xl border border-[#d7e0da] bg-white p-5 shadow-sm sm:p-7"><label htmlFor="question" className="text-sm font-semibold">Your question</label><textarea id="question" value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter") submit(); }} placeholder="Ask something about the synthetic medical record..." className="mt-3 min-h-32 w-full resize-y rounded-2xl border border-[#d7e0da] bg-[#fbfcfa] p-4 text-sm outline-none transition focus:border-[#4d8177] focus:ring-2 focus:ring-[#4d8177]/15" maxLength={1200} /><div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-[#788984]">Ctrl/Cmd + Enter to ask</p><button type="button" onClick={submit} disabled={!question.trim() || ask.isPending || !demo.data} className="inline-flex items-center gap-2 rounded-xl bg-[#174f47] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#123f39] disabled:cursor-not-allowed disabled:opacity-50">{ask.isPending ? <Loader2 className="animate-spin" size={16} /> : <Stethoscope size={16} />}{ask.isPending ? "Analyzing..." : "Ask MedRec-AI"}</button></div>{ask.error && <div className="mt-5 flex gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 shrink-0" size={17} /><div><p className="font-semibold">AI request could not be completed.</p><p className="mt-1">{ask.error.message}</p></div></div>}{answer && <div className="mt-6 rounded-2xl border border-[#d7e5dc] bg-[#f6faf7] p-5"><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">AI-generated information for review</p>{model && <span className="rounded-full bg-white px-2.5 py-1 text-[11px] text-[#70837e]">{model}</span>}</div><p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[#334c47]">{answer}</p></div>}</div>
+        </section>
+        <footer className="mt-12 border-t border-[#d9e1da] py-7 text-xs leading-5 text-[#70837e]"><strong className="text-[#526863]">Healthcare disclaimer:</strong> MedRec-AI is an educational AI demonstration using synthetic data. It is not a diagnostic or treatment system. Do not upload real patient records or confidential health information, and do not use its output for medical decisions.</footer>
+      </div>
+    </main>
   );
 }
