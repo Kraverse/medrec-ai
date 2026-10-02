@@ -32,8 +32,8 @@ export const medrecQueryInput = z.object({
     .optional(),
 });
 
-type GeminiResponse = {
-  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+type OpenRouterResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
   error?: { message?: string };
 };
 
@@ -47,27 +47,40 @@ Begin medical answers with "AI-generated information for review." when appropria
 Remind the user that medical decisions require a qualified healthcare professional when the question asks for diagnosis or treatment.`;
 
 export async function answerMedicalQuestion(question: string, record = demoRecord) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured. Add a Gemini API key to the server environment.");
+    throw new Error("OPENROUTER_API_KEY is not configured. Add an OpenRouter API key to the server environment.");
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const response = await fetch(endpoint, {
+  const model = process.env.OPENROUTER_MODEL || "openrouter/free";
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://medrec-ai-g31u.onrender.com",
+      "X-Title": "MedRec-AI",
+    },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-      contents: [{ role: "user", parts: [{ text: `Synthetic medical record:\n${JSON.stringify(record, null, 2)}\n\nUser question:\n${question}` }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+      model,
+      messages: [
+        { role: "system", content: SYSTEM_INSTRUCTION },
+        {
+          role: "user",
+          content: `Synthetic medical record:\n${JSON.stringify(record, null, 2)}\n\nUser question:\n${question}`,
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 500,
     }),
   });
 
-  const data = (await response.json()) as GeminiResponse;
-  if (!response.ok) throw new Error(data.error?.message || `Gemini request failed with HTTP ${response.status}.`);
+  const data = (await response.json()) as OpenRouterResponse;
+  if (!response.ok) {
+    throw new Error(data.error?.message || `OpenRouter request failed with HTTP ${response.status}.`);
+  }
 
-  const text = data.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
-  if (!text) throw new Error("Gemini returned an empty response.");
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error("OpenRouter returned an empty response.");
   return { answer: text, model };
 }
